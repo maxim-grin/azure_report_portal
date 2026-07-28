@@ -8,11 +8,77 @@ The pattern is intentionally generic — it applies equally to invoices, payroll
 
 ## Architecture
 
+### Flowchart
+
+```mermaid
+flowchart LR
+    User[User]
+    Client[Client App / Client]
+    Entra[Entra ID<br/>Auth / JWT Issuance]
+    APIM[API Management<br/>JWT Validation + Rate Limiting]
+    Func[Azure Function<br/>Generate Report / Render PDF]
+    SQL[(Azure SQL<br/>Serverless)]
+    Blob[(Blob Storage<br/>PDF + SAS URL)]
+    ACS[Azure Communication Services<br/>Email Delivery]
+    KV[Key Vault<br/>Secrets]
+
+    User --> Client
+    Client -->|1. Redirect to Login| Entra
+    Entra -->|2. JWT| Client
+    Client -->|3. POST /reports/generate + JWT| APIM
+    APIM -->|4. Validated request| Func
+    Func -->|5. Fetch report data| SQL
+    Func -->|6. Store PDF| Blob
+    Blob -->|7. SAS URL| Func
+    Func -->|8. Send email w/ link| ACS
+    Func -.->|Managed Identity| KV
+    Blob -.->|Managed Identity| KV
+    SQL -.->|Managed Identity| KV
+
+    style KV fill:#f9f,stroke:#333
 ```
-User → Entra ID (auth) → API Management (JWT validation, rate limiting)
-     → Azure Function (generate report, render PDF)
-     → Blob Storage (store PDF, issue SAS URL)
-     → Azure Communication Services (send email with link)
+
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant Cl as Client App
+    participant E as Entra ID
+    participant A as API Management
+    participant F as Azure Function
+    participant S as Azure SQL
+    participant B as Blob Storage
+    participant C as ACS (Email)
+
+    U->>Cl: Open client app
+    Cl->>E: Redirect to login
+    U->>E: Authenticate
+    E-->>Cl: Auth code
+    Cl->>E: Exchange code for JWT (PKCE)
+    E-->>Cl: JWT token
+
+    U->>Cl: Enter report_id, click Generate
+    Cl->>A: POST /reports/generate (JWT)
+    A->>A: Validate JWT + rate limit
+    A->>F: Forward validated request
+
+    F->>S: Query report source data
+    S-->>F: Report data
+
+    F->>F: Render PDF
+    F->>B: Upload PDF
+    B-->>F: SAS URL (48h expiry)
+
+    F-->>A: download_url
+    A-->>Cl: download_url
+    Cl-->>U: Show download link
+
+    U->>Cl: Click "send email"
+    Cl->>A: POST /reports/send-report-email (download_url)
+    A->>F: Forward request
+    F->>C: Send email with link
+    C-->>U: Email delivered
 ```
 
 All secrets are stored in Key Vault. All service-to-service access uses managed identities — no credentials in code or app settings.
@@ -57,14 +123,18 @@ report-portal-infra/
 │
 ├── terraform.tfvars.example   # Variable template (copy to terraform.tfvars)
 ├── .gitignore
-│
+└──  client/               # Minimal static test client (MSAL.js, no build step)
+│   ├── index.html
+│   ├── app.js
+│   ├── config.example.js
+│   └── README.md               # Application code, deployed separately from infra
 └── functions/                  # Application code, deployed separately from infra
-    ├── function_app.py         # generate_report + send_report_email
-    ├── pdf_builder.py
-    ├── requirements.txt
-    ├── host.json
-    ├── local.settings.json.example
-    └── scripts/
+│   ├── function_app.py         # generate_report + send_report_email
+│   ├── pdf_builder.py
+│   ├── requirements.txt
+│   ├── host.json
+│   ├── local.settings.json.example
+└── scripts/
         └── seed.sql
 ```
 
@@ -148,8 +218,8 @@ See `functions/TESTING.md` for local testing, smoke tests, and full auth-flow ve
 
 ## Testing the flow
 
-1. Get a JWT for a test user via Entra ID (or the Functions emulator's dev auth)
-2. POST /reports/generate with { "report_id": "<uuid-from-seed-data>" }
+1. Sign in through client/ (see client/README.md for one-time Entra ID + APIM setup), or get a JWT via the Functions emulator's dev auth
+2. Click "generate" (or POST /reports/generate directly) with a report_id from seed data
 3. Returns a download_url — fetch it, confirm PDF renders correctly
 4. POST /reports/send-report-email with the same download_url
 5. Confirm email arrives (check ACS delivery report in Azure Portal if not)

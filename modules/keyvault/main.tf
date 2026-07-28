@@ -1,13 +1,16 @@
-data "azurerm_client_config" "current" {}
-
 resource "azurerm_key_vault" "main" {
-  name                       = "${local.prefix}-kv"
-  location                   = azurerm_resource_group.main.location
-  resource_group_name        = azurerm_resource_group.main.name
-  tenant_id                  = data.azurerm_client_config.current.tenant_id
-  sku_name                   = "standard"
+  name                       = "${var.prefix}-kv"
+  location                   = var.location
+  resource_group_name        = var.resource_group_name
+  tenant_id                  = var.tenant_id
+  sku_name                   = var.sku
+
+  # RBAC authorization instead of legacy access policies — cleaner,
+  # auditable, and managed the same way as the rest of Azure IAM.
   enable_rbac_authorization  = true
   purge_protection_enabled   = false
+  # Soft delete + purge protection so secrets can't be permanently lost
+  # (or maliciously purged) on a fat-finger delete.
   soft_delete_retention_days = 7
 
   public_network_access_enabled = false
@@ -18,9 +21,9 @@ resource "azurerm_key_vault" "main" {
 # Private endpoint — Key Vault unreachable from public internet
 resource "azurerm_private_endpoint" "kv" {
   name                = "${local.prefix}-kv-pe"
-  location            = azurerm_resource_group.main.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.main.name
-  subnet_id           = azurerm_subnet.private.id
+  subnet_id           = var.subnet_id
 
   private_service_connection {
     name                           = "${local.prefix}-kv-psc"

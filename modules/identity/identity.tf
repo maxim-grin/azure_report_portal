@@ -1,7 +1,7 @@
 data "azuread_client_config" "current" {}
 
 resource "azuread_application" "api" {
-  display_name = "${local.prefix}-api"
+  display_name = "${var.prefix}-api"
 
   api {
     requested_access_token_version = 2
@@ -31,8 +31,8 @@ resource "azuread_application_password" "api" {
 
 # Managed identity for the Function App — created here, attached in functions.tf
 resource "azurerm_user_assigned_identity" "function" {
-  name                = "${local.prefix}-func-identity"
+  name                = "${var.prefix}-func-identity"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
-  tags                = local.common_tags
+  tags                = var.tags
 }

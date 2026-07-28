@@ -2,23 +2,12 @@
 
 resource "azurerm_service_plan" "main" {
   name                = "${local.prefix}-plan"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  location            = var.location
+  resource_group_name = var.resource_group_name
   os_type             = "Linux"
   sku_name            = "Y1" # Consumption tier
 
-  tags = local.common_tags
-}
-
-# Storage account required by Function App runtime (separate from reports storage)
-resource "azurerm_storage_account" "function_runtime" {
-  name                     = "${replace(local.prefix, "-", "")}fnrt${random_string.fnrt_suffix.result}"
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-
-  tags = local.common_tags
+  tags = var.tags
 }
 
 resource "random_string" "fnrt_suffix" {
@@ -27,20 +16,31 @@ resource "random_string" "fnrt_suffix" {
   upper   = false
 }
 
+# Storage account required by Function App runtime (separate from reports storage)
+resource "azurerm_storage_account" "function_runtime" {
+  name                     = "${replace(var.prefix, "-", "")}fnrt${random_string.fnrt_suffix.result}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+
+  tags = var.tags
+}
+
 resource "azurerm_linux_function_app" "main" {
-  name                = "${local.prefix}-func"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  name                = "${var.prefix}-func"
+  location            = var.location
+  resource_group_name = var.resource_group_name
 
   storage_account_name       = azurerm_storage_account.function_runtime.name
   storage_account_access_key = azurerm_storage_account.function_runtime.primary_access_key
   service_plan_id            = azurerm_service_plan.main.id
 
-  virtual_network_subnet_id = azurerm_subnet.functions.id
+  virtual_network_subnet_id = var.virtual_network_subnet_id
 
   identity {
     type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.function.id]
+    identity_ids = var.identity_ids
   }
 
   site_config {
@@ -59,7 +59,7 @@ resource "azurerm_linux_function_app" "main" {
     "ACS_SENDER_ADDRESS"            = "DoNotReply@${azurerm_email_communication_service_domain.main.from_sender_domain}"
   }
 
-  tags = local.common_tags
+  tags = var.tags
 
   depends_on = [
     azurerm_role_assignment.function_kv_reader,

@@ -1,16 +1,16 @@
 resource "azurerm_virtual_network" "main" {
-  name                = "${local.prefix}-vnet"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  name                = "${var.prefix}-vnet"
+  resource_group_name          = var.resource_group_name
+  location                     = var.location
   address_space       = ["10.0.0.0/16"]
 
-  tags = local.common_tags
+  tags = var.tags
 }
 
 # Subnet for Function App (VNet integration, outbound to private endpoints)
 resource "azurerm_subnet" "functions" {
   name                 = "snet-functions"
-  resource_group_name  = azurerm_resource_group.main.name
+  resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = ["10.0.1.0/24"]
 
@@ -26,7 +26,7 @@ resource "azurerm_subnet" "functions" {
 # Subnet for private endpoints (Key Vault, SQL)
 resource "azurerm_subnet" "private" {
   name                 = "snet-private-endpoints"
-  resource_group_name  = azurerm_resource_group.main.name
+  resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = ["10.0.2.0/24"]
 
@@ -34,8 +34,8 @@ resource "azurerm_subnet" "private" {
 }
 
 resource "azurerm_network_security_group" "private" {
-  name                = "${local.prefix}-private-nsg"
-  location            = azurerm_resource_group.main.location
+  name                = "${var.prefix}-private-nsg"
+  location            = var.location
   resource_group_name = azurerm_resource_group.main.name
 
   security_rule {
@@ -50,7 +50,7 @@ resource "azurerm_network_security_group" "private" {
     destination_address_prefix = "*"
   }
 
-  tags = local.common_tags
+  tags = var.tags
 }
 
 resource "azurerm_subnet_network_security_group_association" "private" {

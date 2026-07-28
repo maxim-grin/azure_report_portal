@@ -1,17 +1,17 @@
 resource "azurerm_communication_service" "main" {
-  name                = "${local.prefix}-acs"
-  resource_group_name = azurerm_resource_group.main.name
-  data_location        = "United States"
+  name                = "${var.prefix}-acs"
+  resource_group_name = var.resource_group_name
+  data_location        = var.data_location
 
-  tags = local.common_tags
+  tags = var.tags
 }
 
 resource "azurerm_email_communication_service" "main" {
-  name                = "${local.prefix}-acs-email"
-  resource_group_name = azurerm_resource_group.main.name
-  data_location        = "United States"
+  name                = "${var.prefix}-acs-email"
+  resource_group_name = var.resource_group_name
+  data_location        = var.data_location
 
-  tags = local.common_tags
+  tags = var.tags
 }
 
 resource "azurerm_email_communication_service_domain" "main" {
