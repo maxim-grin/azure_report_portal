@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Report Portal — Client</title>
+<script src="https://alcdn.msauth.net/browser/3.18.0/js/msal-browser.min.js"></script>
+<style>
+  :root {
+    --bg: #0F1417;
+    --panel: #171D22;
+    --panel-border: #232B31;
+    --text: #E7EDF0;
+    --text-muted: #7C8A93;
+    --accent: #4FD1C5;
+    --accent-dim: #2E4B49;
+    --danger: #E5735A;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 20px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 640px;
+  }
+
+  header {
+    margin-bottom: 28px;
+  }
+
+  header .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  header p {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 8px 0 0;
+    line-height: 1.5;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .panel h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 0 0 14px;
+    font-weight: 600;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .row:last-child { margin-bottom: 0; }
+
+  label {
+    font-size: 13px;
+    color: var(--text-muted);
+    min-width: 110px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 9px 10px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  button {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: background 0.15s ease;
+  }
+
+  button:hover:not(:disabled) { background: var(--accent); color: var(--bg); }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  button.full { width: 100%; }
+
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .identity {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .identity .who {
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .identity .who .name { color: var(--text); }
+  .identity .who .email { color: var(--text-muted); display: block; font-size: 12px; margin-top: 2px; }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 100px;
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+  }
+
+  .pill.signed-in { color: var(--accent); border-color: var(--accent-dim); }
+
+  a.download-link {
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    word-break: break-all;
+  }
+
+  /* signature element: terminal-style request/response log */
+  .log {
+    background: #0A0D0F;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    height: 220px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .log .line { margin-bottom: 2px; }
+  .log .ts { color: var(--text-muted); }
+  .log .ok { color: var(--accent); }
+  .log .err { color: var(--danger); }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 24px;
+  }
+
+  footer code {
+    font-family: var(--font-mono);
+    background: var(--panel);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Report Portal</div>
+      <h1>Minimal test client</h1>
+      <p>
+        Exercises the full flow described in the infra README: Entra ID login →
+        JWT → API Management → Function → SAS download URL → email.
+        Not a production frontend — just enough to click through the flow.
+      </p>
+    </header>
+
+    <div class="panel">
+      <h2>Identity</h2>
+      <div class="identity">
+        <div class="who" id="who">
+          <span class="name">Not signed in</span>
+        </div>
+        <div>
+          <span class="pill" id="authPill">signed out</span>
+        </div>
+      </div>
+      <div class="row" style="margin-top: 14px;">
+        <button id="loginBtn" class="full">Sign in with Entra ID</button>
+        <button id="logoutBtn" class="full" style="display:none;">Sign out</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Generate report</h2>
+      <div class="row">
+        <label for="reportId">report_id</label>
+        <input type="text" id="reportId" placeholder="uuid from seed.sql" />
+      </div>
+      <div class="row" style="margin-top: 12px;">
+        <button id="generateBtn" class="full" disabled>POST /reports/generate</button>
+      </div>
+      <div class="row" id="downloadRow" style="display:none; margin-top: 12px;">
+        <label>download_url</label>
+        <a class="download-link" id="downloadLink" href="#" target="_blank" rel="noopener"></a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Send report email</h2>
+      <div class="row">
+        <button id="sendEmailBtn" class="full" disabled>POST /reports/send-report-email</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Request log</h2>
+      <div class="log" id="log"></div>
+    </div>
+
+    <footer>
+      Configure <code>tenantId</code>, <code>clientId</code>, <code>apiScope</code>
+      and <code>apimBaseUrl</code> in <code>config.js</code> before use. See <code>README.md</code>.
+    </footer>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
