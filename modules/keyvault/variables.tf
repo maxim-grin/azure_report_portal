@@ -1,5 +1,5 @@
 variable "prefix" {
-  description = "Naming prefix, e.g. \"${var.project}-${var.environment}\" from the root module's locals"
+  description = "Naming prefix, e.g. project-environment from the root module's locals"
   type        = string
 }
 
