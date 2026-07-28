@@ -105,22 +105,6 @@ All secrets are stored in Key Vault. All service-to-service access uses managed 
 ```
 report-portal-infra/
 │
-├── providers.tf          # Provider config and remote backend
-├── variables.tf          # All input variables
-├── outputs.tf            # Function URL, storage account name, etc.
-├── locals.tf             # Naming convention, shared tags
-│
-├── resource_group.tf     # Resource group
-├── networking.tf         # VNet, subnet, NSG, private endpoints
-├── identity.tf           # Entra ID app registration, managed identities, workload identity federation
-├── keyvault.tf           # Key Vault, RBAC-based access, secrets
-├── storage.tf            # Blob Storage account and reports container
-├── database.tf           # Azure SQL server and serverless database
-├── functions.tf          # App Service Plan, Function App, app settings
-├── apim.tf               # API Management, API definition, JWT policy
-├── communication.tf      # ACS resource and email domain
-├── rbac.tf               # All role assignments in one place
-│
 ├── terraform.tfvars.example   # Variable template (copy to terraform.tfvars)
 ├── .gitignore
 └──  client/               # Minimal static test client (MSAL.js, no build step)
@@ -128,14 +112,27 @@ report-portal-infra/
 │   ├── app.js
 │   ├── config.example.js
 │   └── README.md               # Application code, deployed separately from infra
+└──  environments/              # Environments
+│   ├── dev
+      ├── variables.tf          # All input variables
+      ├── outputs.tf            # Function URL, storage account name, etc.
 └── functions/                  # Application code, deployed separately from infra
 │   ├── function_app.py         # generate_report + send_report_email
 │   ├── pdf_builder.py
 │   ├── requirements.txt
 │   ├── host.json
 │   ├── local.settings.json.example
+└──  modules/              # Modules
+│   ├── apim               # API Management, API definition, JWT policy
+│   ├── networking         # VNet, subnet, NSG, private endpoints
+│   ├── identity           # Entra ID app registration, managed identities, workload identity federation
+│   ├── keyvault           # Key Vault, RBAC-based access, secrets
+│   ├── storage            # Blob Storage account and reports container
+│   ├── database           # Azure SQL server and serverless database
+│   ├── functions          # App Service Plan, Function App, app settings
+│   ├── communication      # ACS resource and email domain
 └── scripts/
-        └── seed.sql
+│   ├── seed.sql
 ```
 
 ---
