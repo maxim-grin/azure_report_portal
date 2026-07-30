@@ -8,12 +8,17 @@ resource "azurerm_key_vault" "main" {
   # RBAC authorization instead of legacy access policies — cleaner,
   # auditable, and managed the same way as the rest of Azure IAM.
   enable_rbac_authorization  = true
-  purge_protection_enabled   = false
+  purge_protection_enabled   = true
   # Soft delete + purge protection so secrets can't be permanently lost
   # (or maliciously purged) on a fat-finger delete.
   soft_delete_retention_days = 7
 
   public_network_access_enabled = false
+
+  network_acls {
+    default_action = "Deny"
+    bypass         = "AzureServices"
+  }
 
   tags = var.tags
 }

@@ -138,6 +138,8 @@ resource "azurerm_key_vault_secret" "sql_connection_string" {
   name         = "sql-connection-string"
   value        = "Server=tcp:${module.database.mssql_fully_qualified_domain_name},1433;Database=${module.database.mssql_database_name};Authentication=Active Directory Managed Identity;"
   key_vault_id = module.keyvault.key_vault_id
+  content_type = "text/plain"
+
 
   depends_on = [azurerm_role_assignment.terraform_kv_admin]
 }
@@ -146,6 +148,7 @@ resource "azurerm_key_vault_secret" "acs_connection_string" {
   name         = "acs-connection-string"
   value        = module.communication.communication_primary_connection_string
   key_vault_id = module.keyvault.key_vault_id
+  content_type = "text/plain"
 
   depends_on = [azurerm_role_assignment.terraform_kv_admin]
 }
