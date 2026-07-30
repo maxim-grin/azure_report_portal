@@ -25,9 +25,19 @@ variable "sql_admin_password" {
   sensitive   = true
 }
 
+variable "aad_object_id" {
+  description = "AAD object id"
+  type        = string
+}
+
 variable "subnet_id" {
   description = "Subnet ID for the storage account's private endpoint"
   type        = string
+}
+
+variable "sql_private_dns_zone_id" {
+  type        = string
+  description = "Private DNS zone ID for privatelink.database.windows.net"
 }
 
 variable "tags" {

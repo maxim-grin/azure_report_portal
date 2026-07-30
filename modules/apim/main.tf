@@ -1,4 +1,7 @@
 resource "azurerm_api_management" "main" {
+  #checkov:skip=CKV_AZURE_174:Consumption tier has no private-networking option (no VNet integration, no private endpoint); accepted for a Consumption-tier deployment. See README security section.
+  #checkov:skip=CKV_AZURE_107:Consumption tier does not support virtual_network_type (Developer/Premium only); accepted for a Consumption-tier deployment. See README security section.
+
   name                = "${var.prefix}-apim"
   location            = var.location
   resource_group_name = var.resource_group_name

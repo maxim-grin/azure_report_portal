@@ -15,39 +15,27 @@ resource "azurerm_key_vault" "main" {
 
   public_network_access_enabled = false
 
-  tags = local.common_tags
+  tags = var.tags
 }
 
 # Private endpoint — Key Vault unreachable from public internet
 resource "azurerm_private_endpoint" "kv" {
-  name                = "${local.prefix}-kv-pe"
+  name                = "${var.prefix}-kv-pe"
   location            = var.location
-  resource_group_name = azurerm_resource_group.main.name
+  resource_group_name = var.resource_group_name
   subnet_id           = var.subnet_id
 
   private_service_connection {
-    name                           = "${local.prefix}-kv-psc"
+    name                           = "${var.prefix}-kv-psc"
     private_connection_resource_id = azurerm_key_vault.main.id
     is_manual_connection           = false
     subresource_names              = ["vault"]
   }
 
-  tags = local.common_tags
-}
+  private_dns_zone_group {
+    name                 = "default"
+    private_dns_zone_ids = [var.vault_private_dns_zone_id]
+  }
 
-# Secrets
-resource "azurerm_key_vault_secret" "sql_connection_string" {
-  name         = "sql-connection-string"
-  value        = "Server=tcp:${azurerm_mssql_server.main.fully_qualified_domain_name},1433;Database=${azurerm_mssql_database.main.name};Authentication=Active Directory Managed Identity;"
-  key_vault_id = azurerm_key_vault.main.id
-
-  depends_on = [azurerm_role_assignment.terraform_kv_admin]
-}
-
-resource "azurerm_key_vault_secret" "acs_connection_string" {
-  name         = "acs-connection-string"
-  value        = azurerm_communication_service.main.primary_connection_string
-  key_vault_id = azurerm_key_vault.main.id
-
-  depends_on = [azurerm_role_assignment.terraform_kv_admin]
+  tags = var.tags
 }

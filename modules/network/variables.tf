@@ -13,13 +13,8 @@ variable resource_group_name {
     description = "Name of the resource group"
 }
 
-variable tentant_id {
-  type        = string
-  description = "Entra ID tenant ID"
-}
-
-variable sku {
-    type = string
-    description = "standard or premium"
-    default = "standard"
+variable "tags" {
+  description = "Common tags applied to all resources"
+  type        = map(string)
+  default     = {}
 }

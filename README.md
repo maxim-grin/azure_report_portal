@@ -103,7 +103,7 @@ All secrets are stored in Key Vault. All service-to-service access uses managed 
 ## Repository structure
 
 ```
-report-portal-infra/
+azure_report_portal/
 │
 ├── terraform.tfvars.example   # Variable template (copy to terraform.tfvars)
 ├── .gitignore
@@ -151,11 +151,20 @@ report-portal-infra/
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/your-username/report-portal-infra.git
-cd report-portal-infra
+git clone https://github.com/maxim-grin/azure_report_portal.git
+cd azure_report_portal
 ```
 
-**2. Create the remote state backend**
+**2. Install dependencies for pre-commit-terraform, if you want to do any code modifications**
+
+[pre-commit-terraform dependencies] (https://github.com/antonbabenko/pre-commit-terraform#1-install-dependencies)
+for example, MacOS dependencies look like:
+
+```bash
+brew install pre-commit terraform-docs tflint tfsec trivy checkov terrascan infracost tfupdate minamijoyo/hcledit/hcledit jq
+```
+
+**3. Create the remote state backend**
 
 Create a storage account manually for Terraform state — this is intentionally outside Terraform so state itself has a stable home.
 
@@ -172,7 +181,7 @@ az storage container create \
 
 Update the backend block in `main.tf` with your storage account name.
 
-**3. Configure variables**
+**4. Configure variables**
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
@@ -180,7 +189,7 @@ cp terraform.tfvars.example terraform.tfvars
 
 Edit `terraform.tfvars` with your values. This file is gitignored — never commit it.
 
-**4. Initialise and apply**
+**5. Initialise and apply**
 
 ```bash
 terraform init
@@ -248,6 +257,30 @@ See `functions/TESTING.md` for local testing, smoke tests, and full auth-flow ve
 - Key Vault and SQL sit behind private endpoints, not public access with IP rules
 - Key Vault access uses managed identities, not access keys or shared secrets
 - NSG rules restrict inbound traffic to APIM only
+- **APIM is intentionally not deployed inside a virtual network, and public
+  network access is not disabled.** Consumption tier supports neither
+  `virtual_network_type` (VNet integration) nor private endpoints / disabling
+  public access — those require Developer, Basic, Standard, or Premium tier.
+  This is a hard platform ceiling, not a config gap: there's no Terraform
+  setting that closes it while staying on Consumption.
+  Moving to Developer tier (~$50/month) or Premium (~$2,700+/month) would
+  close both findings. See the Cost estimate section below.
+- **Minimum TLS 1.2 is enforced on Azure SQL** (`minimum_tls_version = "1.2"`)
+  — this matches Azure's own default, made explicit for scanning tools that
+  can't see runtime defaults.
+- **Ledger and zone redundancy are not enabled on Azure SQL.** Ledger
+  (`CKV_AZURE_224`) would make every table append-only by default and
+  requires GRS/ZRS digest storage — a schema-level and infra change beyond
+  this deployment's scope, not a simple toggle. Zone redundancy
+  (`CKV_AZURE_229`) isn't available on General Purpose serverless at all;
+  it requires Premium, Business Critical, or Hyperscale, reintroducing the
+  always-on cost this project is designed to avoid. Both findings are
+  suppressed with inline `#checkov:skip` comments explaining why.
+- **The Function App's service plan has no zone redundancy or minimum
+  instance guarantee.** Both require leaving Consumption (`Y1`) for an
+  Elastic Premium plan, which also mandates a minimum of three always-ready
+  instances once zone redundancy is enabled — a jump from near-zero cost to
+  roughly $150–250+/month before scaling.
 
 ---
 
@@ -265,7 +298,8 @@ For a personal learning deployment, spun up for a few hours at a time and destro
 | Key Vault                          | Per 10,000 operations             | ~$1/month        |
 | Private endpoints                  | Per hour, per endpoint            | ~$0.01/hour each |
 
-> All Azure billing here is fractional/hourly or per-call, not a flat monthly charge. Running this for a weekend costs cents, not dollars. Always `terraform destroy` when you're done with a session — private endpoints and SQL serverless compute are the main per-hour costs if left running.
+All Azure billing here is fractional/hourly or per-call, not a flat monthly charge. Running this for a weekend costs cents, not dollars. Always `terraform destroy` when you're done with a session — private endpoints and SQL serverless compute are the main per-hour costs if left running.
+**Note:** these figures assume APIM stays on the Consumption tier. Moving to Developer or Premium — e.g. to satisfy VNet-integration requirements replaces the ~$0 APIM line with a flat ~$50/month (Developer) or ~$2,700+/month (Premium) cost, independent of usage.
 
 ---
 
@@ -276,6 +310,12 @@ For a personal learning deployment, spun up for a few hours at a time and destro
 - Production hardening beyond what's described here (WAF rules tuning on APIM/Front Door, DDoS Standard protection, multi-region failover)
 
 ---
+
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+auto populated information
+
+<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 
 ## Learning resources
 

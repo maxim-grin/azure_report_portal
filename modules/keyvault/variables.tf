@@ -13,7 +13,7 @@ variable resource_group_name {
     description = "Name of the resource group"
 }
 
-variable tentant_id {
+variable tenant_id {
   type        = string
   description = "Entra ID tenant ID"
 }
@@ -27,4 +27,15 @@ variable sku {
 variable "subnet_id" {
   description = "Subnet ID for the storage account's private endpoint"
   type        = string
+}
+
+variable "vault_private_dns_zone_id" {
+  type        = string
+  description = "Private DNS zone ID for privatelink.vaultcore.azure.net"
+}
+
+variable "tags" {
+  description = "Common tags applied to all resources"
+  type        = map(string)
+  default     = {}
 }

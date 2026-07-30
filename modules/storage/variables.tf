@@ -18,6 +18,11 @@ variable "subnet_id" {
   type        = string
 }
 
+variable "blob_private_dns_zone_id" {
+  type        = string
+  description = "Private DNS zone ID for privatelink.blob.core.windows.net"
+}
+
 variable "tags" {
   description = "Common tags applied to all resources"
   type        = map(string)

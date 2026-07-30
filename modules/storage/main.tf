@@ -13,6 +13,8 @@ resource "azurerm_storage_account" "main" {
   account_replication_type = "LRS"
 
   public_network_access_enabled = false
+  allow_nested_items_to_be_public = false
+  min_tls_version                 = "TLS1_2"
 
   tags = var.tags
 }
@@ -35,6 +37,11 @@ resource "azurerm_private_endpoint" "storage" {
     private_connection_resource_id = azurerm_storage_account.main.id
     is_manual_connection           = false
     subresource_names              = ["blob"]
+  }
+
+  private_dns_zone_group {
+    name                 = "default"
+    private_dns_zone_ids = [var.blob_private_dns_zone_id]
   }
 
   tags = var.tags

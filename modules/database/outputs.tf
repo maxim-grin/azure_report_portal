@@ -6,3 +6,7 @@ output "mssql_server_id" {
 output "mssql_database_name" {
   value =  azurerm_mssql_database.main.name
 }
+
+output "mssql_fully_qualified_domain_name" {
+  value = azurerm_mssql_server.main.fully_qualified_domain_name
+}

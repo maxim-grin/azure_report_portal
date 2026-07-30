@@ -23,7 +23,7 @@ variable "admin_email" {
   type        = string
 }
 
-variable tentant_id {
+variable tenant_id {
   type        = string
   description = "Azure tenant ID"
 }

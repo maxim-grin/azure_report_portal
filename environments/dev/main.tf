@@ -44,6 +44,12 @@ provider "random" {}
 locals {
   prefix = "${var.project}-${var.environment}"
 
+  private_dns_zones = {
+    blob  = "privatelink.blob.core.windows.net"
+    vault = "privatelink.vaultcore.azure.net"
+    sql   = "privatelink.database.windows.net"
+  }
+
   common_tags = {
     project     = var.project
     environment = var.environment
@@ -57,6 +63,22 @@ resource "azurerm_resource_group" "main" {
   tags     = local.common_tags
 }
 
+resource "azurerm_private_dns_zone" "this" {
+  for_each            = local.private_dns_zones
+  name                = each.value
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.common_tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "this" {
+  for_each              = azurerm_private_dns_zone.this
+  name                  = "${local.prefix}-${each.key}-link"
+  resource_group_name   = azurerm_resource_group.main.name
+  private_dns_zone_name = each.value.name
+  virtual_network_id    = module.network.vnet_id
+  tags                  = local.common_tags
+}
+
 module "network" {
   source = "../../modules/network"
 
@@ -68,6 +90,8 @@ module "network" {
 
 module "storage" {
   source = "../../modules/storage"
+
+  blob_private_dns_zone_id = azurerm_private_dns_zone.this["blob"].id
 
   prefix              = local.prefix
   resource_group_name = azurerm_resource_group.main.name
@@ -90,7 +114,10 @@ module keyvault {
     location = var.location
     subnet_id           = module.network.private_subnet_id
     tenant_id = data.azurerm_client_config.current.tenant_id
-    tags = local.tags
+
+    vault_private_dns_zone_id = azurerm_private_dns_zone.this["vault"].id
+
+    tags = local.common_tags
 }
 
 # Terraform identity needs Key Vault Secrets Officer to write secrets in keyvault.tf
@@ -107,6 +134,22 @@ resource "azurerm_role_assignment" "function_kv_reader" {
   principal_id         = module.identity.function_principal_id
 }
 
+resource "azurerm_key_vault_secret" "sql_connection_string" {
+  name         = "sql-connection-string"
+  value        = "Server=tcp:${module.database.mssql_fully_qualified_domain_name},1433;Database=${module.database.mssql_database_name};Authentication=Active Directory Managed Identity;"
+  key_vault_id = module.keyvault.key_vault_id
+
+  depends_on = [azurerm_role_assignment.terraform_kv_admin]
+}
+
+resource "azurerm_key_vault_secret" "acs_connection_string" {
+  name         = "acs-connection-string"
+  value        = module.communication.communication_primary_connection_string
+  key_vault_id = module.keyvault.key_vault_id
+
+  depends_on = [azurerm_role_assignment.terraform_kv_admin]
+}
+
 module database {
     source = "../../modules/database"
 
@@ -116,8 +159,11 @@ module database {
     subnet_id           = module.network.private_subnet_id
     sql_admin_login = var.sql_admin_login
     sql_admin_password = var.sql_admin_password
+    aad_object_id = data.azurerm_client_config.current.object_id
 
-    tags = local.tags
+    sql_private_dns_zone_id = azurerm_private_dns_zone.this["sql"].id
+
+    tags = local.common_tags
 }
 
 # Function App identity reads payroll data from SQL — via AAD auth, no password
@@ -135,7 +181,7 @@ module communication {
     prefix              = local.prefix
     data_location        = "United States"
 
-    tags = local.tags
+    tags = local.common_tags
 }
 
 # Function App identity sends email via ACS
@@ -152,7 +198,7 @@ module identity {
     location = azurerm_resource_group.main.location
     prefix              = local.prefix
 
-    tags = local.tags
+    tags = local.common_tags
 }
 
 module apim {
@@ -160,13 +206,13 @@ module apim {
 
     resource_group_name = azurerm_resource_group.main.name
     location = azurerm_resource_group.main.location
-    tentant_id = data.azurerm_client_config.current.tenant_id
+    tenant_id = data.azurerm_client_config.current.tenant_id
     client_id = module.identity.application_client_id
     prefix              = local.prefix
     project = var.project
     admin_email = var.admin_email
   
-    tags = local.tags
+    tags = local.common_tags
 }
 
 module functions {
@@ -178,9 +224,20 @@ module functions {
     virtual_network_subnet_id = module.network.function_subnet_id
     identity_ids = [module.identity.function_identity_id]
     key_vault_vault_uri = module.keyvault.key_vault_vault_uri
-    sql_connection_string = module.keyvault.sql_connection_string
-    acs_connection_string = module.keyvault.acs_connection_string
+    sql_connection_string_secret = azurerm_key_vault_secret.sql_connection_string.name
+    acs_connection_string_secret = azurerm_key_vault_secret.acs_connection_string.name
+    azure_function_client_id = module.identity.azure_function_client_id
+    reports_storage_account_name = module.storage.storage_account_name
+    acs_from_sender_domain = module.communication.from_sender_domain
 
-    tags = local.tags
+    depends_on = [
+      azurerm_role_assignment.function_kv_reader,
+      azurerm_role_assignment.function_storage_contributor,
+      azurerm_role_assignment.function_sql_contributor,
+    ]
+
+    blob_private_dns_zone_id = azurerm_private_dns_zone.this["blob"].id
+
+    tags = local.common_tags
 }
 
