@@ -1,8 +1,7 @@
 # Report Portal — Azure Infrastructure (Terraform)
 
 A production-realistic Azure infrastructure project provisioned entirely with Terraform. Users authenticate via Entra ID, request a report through a secured API, and receive a time-limited PDF download link by email.
-
-The pattern is intentionally generic — it applies equally to invoices, payroll documents, analytics exports, compliance reports, or any scenario where a user needs an on-demand generated document delivered securely.
+The pattern is intentionally generic, it applies equally to invoices, payroll documents, analytics exports, compliance reports, or any scenario where a user needs an on-demand generated document delivered securely.
 
 ---
 
