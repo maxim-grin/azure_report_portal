@@ -12,7 +12,7 @@ resource "azurerm_storage_account" "main" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
 
-  public_network_access_enabled = false
+  public_network_access_enabled   = false
   allow_nested_items_to_be_public = false
   min_tls_version                 = "TLS1_2"
 

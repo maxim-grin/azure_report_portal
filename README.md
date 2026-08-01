@@ -163,6 +163,18 @@ for example, MacOS dependencies look like:
 brew install pre-commit terraform-docs tflint tfsec trivy checkov terrascan infracost tfupdate minamijoyo/hcledit/hcledit jq
 ```
 
+Then install pre-commit for the repo
+
+```bash
+pre-commit install
+```
+
+To trigger it manually run
+
+```bash
+pre-commit run -a
+```
+
 **3. Create the remote state backend**
 
 Create a storage account manually for Terraform state — this is intentionally outside Terraform so state itself has a stable home.
@@ -191,7 +203,10 @@ Edit `terraform.tfvars` with your values. This file is gitignored — never comm
 **5. Initialise and apply**
 
 ```bash
-terraform init
+cp backend.hcl.example backend.hcl
+# edit backend.hcl with your actual bucket/table names
+
+terraform init -backend-config=backend.hcl
 terraform plan
 terraform apply
 ```

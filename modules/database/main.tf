@@ -12,7 +12,7 @@ resource "azurerm_mssql_server" "main" {
   administrator_login          = var.sql_admin_login
   administrator_login_password = var.sql_admin_password
 
-  minimum_tls_version = "1.2" 
+  minimum_tls_version = "1.2"
 
   public_network_access_enabled = false
 
@@ -28,11 +28,11 @@ resource "azurerm_mssql_database" "main" {
   #checkov:skip=CKV_AZURE_224:Ledger requires GRS/ZRS digest storage (current storage module uses LRS) and makes tables append-only, needing app-level schema review. Accepted for a learning deployment. See README security section.
   #checkov:skip=CKV_AZURE_229:Zone redundancy isn't available on General Purpose serverless and requires Premium/Business Critical/Hyperscale, which reintroduces the always-on cost this deployment avoids. Accepted for a learning deployment. See README security section.
 
-  name        = "${var.prefix}-db"
-  server_id   = azurerm_mssql_server.main.id
-  sku_name    = "GP_S_Gen5_1" # General Purpose, Serverless, 1 vCore
+  name         = "${var.prefix}-db"
+  server_id    = azurerm_mssql_server.main.id
+  sku_name     = "GP_S_Gen5_1" # General Purpose, Serverless, 1 vCore
   min_capacity = 0.5
-  max_size_gb = 2
+  max_size_gb  = 2
 
   auto_pause_delay_in_minutes = 60
 

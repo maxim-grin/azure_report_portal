@@ -11,5 +11,5 @@ output "tenant_id" {
 }
 
 output "api_client_id" {
-  value = azuread_application.api.client_id
+  value = module.identity.application_client_id
 }

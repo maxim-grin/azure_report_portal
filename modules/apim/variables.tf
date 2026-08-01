@@ -3,14 +3,14 @@ variable "prefix" {
   type        = string
 }
 
-variable location {
+variable "location" {
   type        = string
   description = "Azure location"
 }
 
-variable resource_group_name {
-    type = string
-    description = "Name of the resource group"
+variable "resource_group_name" {
+  type        = string
+  description = "Name of the resource group"
 }
 
 variable "project" {
@@ -23,12 +23,12 @@ variable "admin_email" {
   type        = string
 }
 
-variable tenant_id {
+variable "tenant_id" {
   type        = string
   description = "Azure tenant ID"
 }
 
-variable client_id {
+variable "client_id" {
   type        = string
   description = "Azure application client ID"
 }

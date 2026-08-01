@@ -4,9 +4,7 @@ repos:
     hooks:
       - id: tflint
         args:
-          - "--module"
-          - "--deep"
-          - "--config=.tflint.hcl"
+          - "--chdir=environments/dev"
       - id: terraform-validate
       - id: terraform-fmt
   - repo: https://github.com/antonbabenko/pre-commit-terraform

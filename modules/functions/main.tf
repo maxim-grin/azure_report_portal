@@ -21,12 +21,12 @@ resource "random_string" "fnrt_suffix" {
 # Storage account required by Function App runtime (separate from reports storage)
 resource "azurerm_storage_account" "function_runtime" {
   name                     = "${replace(var.prefix, "-", "")}fnrt${random_string.fnrt_suffix.result}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
+  location                 = var.location
+  resource_group_name      = var.resource_group_name
   account_tier             = "Standard"
   account_replication_type = "LRS"
 
-  public_network_access_enabled = false
+  public_network_access_enabled   = false
   allow_nested_items_to_be_public = false
   min_tls_version                 = "TLS1_2"
 
@@ -89,18 +89,18 @@ resource "azurerm_linux_function_app" "main" {
 
   site_config {
     application_stack {
-       python_version = "3.11"
+      python_version = "3.11"
     }
   }
 
   app_settings = {
-    "FUNCTIONS_WORKER_RUNTIME"      = "python"
-    "AZURE_CLIENT_ID"               = var.azure_function_client_id
-    "KEY_VAULT_URI"                 = var.key_vault_vault_uri
-    "REPORTS_STORAGE_ACCOUNT_NAME"  = var.reports_storage_account_name
-    "SQL_CONNECTION_STRING_SECRET"  = var.sql_connection_string_secret
-    "ACS_CONNECTION_STRING_SECRET"  = var.acs_connection_string_secret
-    "ACS_SENDER_ADDRESS"            = "DoNotReply@${var.acs_from_sender_domain}"
+    "FUNCTIONS_WORKER_RUNTIME"     = "python"
+    "AZURE_CLIENT_ID"              = var.azure_function_client_id
+    "KEY_VAULT_URI"                = var.key_vault_vault_uri
+    "REPORTS_STORAGE_ACCOUNT_NAME" = var.reports_storage_account_name
+    "SQL_CONNECTION_STRING_SECRET" = var.sql_connection_string_secret
+    "ACS_CONNECTION_STRING_SECRET" = var.acs_connection_string_secret
+    "ACS_SENDER_ADDRESS"           = "DoNotReply@${var.acs_from_sender_domain}"
   }
 
   tags = var.tags

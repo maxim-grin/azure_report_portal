@@ -32,7 +32,7 @@ resource "azuread_application_password" "api" {
 # Managed identity for the Function App — created here, attached in functions.tf
 resource "azurerm_user_assigned_identity" "function" {
   name                = "${var.prefix}-func-identity"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = var.location
+  resource_group_name = var.resource_group_name
   tags                = var.tags
 }

@@ -3,14 +3,14 @@ variable "prefix" {
   type        = string
 }
 
-variable location {
+variable "location" {
   type        = string
   description = "Azure location"
 }
 
-variable resource_group_name {
-    type = string
-    description = "Name of the resource group"
+variable "resource_group_name" {
+  type        = string
+  description = "Name of the resource group"
 }
 
 variable "virtual_network_subnet_id" {
@@ -21,7 +21,6 @@ variable "virtual_network_subnet_id" {
 variable "identity_ids" {
   description = "Identity Ids"
   type        = list(string)
-  default     = {}
 }
 
 variable "key_vault_vault_uri" {

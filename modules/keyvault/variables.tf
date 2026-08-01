@@ -3,25 +3,25 @@ variable "prefix" {
   type        = string
 }
 
-variable location {
+variable "location" {
   type        = string
   description = "Azure location"
 }
 
-variable resource_group_name {
-    type = string
-    description = "Name of the resource group"
+variable "resource_group_name" {
+  type        = string
+  description = "Name of the resource group"
 }
 
-variable tenant_id {
+variable "tenant_id" {
   type        = string
   description = "Entra ID tenant ID"
 }
 
-variable sku {
-    type = string
-    description = "standard or premium"
-    default = "standard"
+variable "sku" {
+  type        = string
+  description = "standard or premium"
+  default     = "standard"
 }
 
 variable "subnet_id" {

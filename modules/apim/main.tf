@@ -27,7 +27,7 @@ resource "azurerm_api_management_api_operation" "get_report" {
   operation_id        = "get-report"
   api_name            = azurerm_api_management_api.reports.name
   api_management_name = azurerm_api_management.main.name
-  resource_group_name = azurerm_resource_group.main.name
+  resource_group_name = var.resource_group_name
   display_name        = "Generate report"
   method              = "POST"
   url_template        = "/generate"

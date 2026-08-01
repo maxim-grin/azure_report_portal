@@ -3,14 +3,14 @@ variable "prefix" {
   type        = string
 }
 
-variable location {
+variable "location" {
   type        = string
   description = "Azure location"
 }
 
-variable resource_group_name {
-    type = string
-    description = "Name of the resource group"
+variable "resource_group_name" {
+  type        = string
+  description = "Name of the resource group"
 }
 
 variable "sql_admin_login" {

@@ -1,13 +1,13 @@
 resource "azurerm_key_vault" "main" {
-  name                       = "${var.prefix}-kv"
-  location                   = var.location
-  resource_group_name        = var.resource_group_name
-  tenant_id                  = var.tenant_id
-  sku_name                   = var.sku
+  name                = "${var.prefix}-kv"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tenant_id           = var.tenant_id
+  sku_name            = var.sku
 
   # RBAC authorization instead of legacy access policies — cleaner,
   # auditable, and managed the same way as the rest of Azure IAM.
-  enable_rbac_authorization  = true
+  rbac_authorization_enabled = true
   purge_protection_enabled   = true
   # Soft delete + purge protection so secrets can't be permanently lost
   # (or maliciously purged) on a fat-finger delete.
