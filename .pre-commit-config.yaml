@@ -1,15 +1,28 @@
 repos:
-  - repo: https://github.com/gruntwork-io/pre-commit
-    rev: v0.1.30
+  - repo: https://github.com/terraform-docs/terraform-docs
+    rev: v0.24.0
     hooks:
-      - id: tflint
-        args:
-          - "--chdir=environments/dev"
-      - id: terraform-validate
-      - id: terraform-fmt
+      - id: terraform-docs-go
+        args: ["markdown", "table", "--output-file", "README.md", "."]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-json
+
   - repo: https://github.com/antonbabenko/pre-commit-terraform
     rev: v1.108.1
     hooks:
-      - id: terraform_tfsec
-      - id: terraform_docs
-      - id: checkov
+      - id: terraform_fmt
+      - id: terraform_validate
+      - id: terraform_tflint
+      - id: terraform_trivy
+      - id: terraform_checkov
+      #- id: infracost_breakdown
+      #  args:
+      #  - --args=--path=.
+      # This requires INFRACOST_API_KEY to be set

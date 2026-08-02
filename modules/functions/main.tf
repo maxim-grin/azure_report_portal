@@ -30,17 +30,18 @@ resource "azurerm_storage_account" "function_runtime" {
   allow_nested_items_to_be_public = false
   min_tls_version                 = "TLS1_2"
 
-  queue_properties {
-    logging {
-      delete                = true
-      read                  = true
-      write                 = true
-      version               = "1.0"
-      retention_policy_days = 7
-    }
-  }
-
   tags = var.tags
+}
+
+resource "azuerm_storage_account_queue_properties" "queue_properties" {
+  storage_account_id = azurerm_storage_account.function_runtime.id
+  logging {
+    delete                = true
+    read                  = true
+    write                 = true
+    version               = "1.0"
+    retention_policy_days = 7
+  }
 }
 
 # Private endpoint is required, because public access is disabled, so the
