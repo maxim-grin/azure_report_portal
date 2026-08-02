@@ -104,23 +104,26 @@ All secrets are stored in Key Vault. All service-to-service access uses managed 
 ```
 azure_report_portal/
 │
-├── terraform.tfvars.example   # Variable template (copy to terraform.tfvars)
-├── .gitignore
 └──  client/               # Minimal static test client (MSAL.js, no build step)
 │   ├── index.html
 │   ├── app.js
 │   ├── config.example.js
 │   └── README.md               # Application code, deployed separately from infra
 └──  environments/              # Environments
-│   ├── dev
-      ├── variables.tf          # All input variables
-      ├── outputs.tf            # Function URL, storage account name, etc.
+│   └── dev
+│     ├── backend.hcl.example # Backend parameters template (copy to backend.hcl)
+│     ├── backend.tf          # Backend configuration
+│     ├── main.tf             # Main part of the enironment
+│     ├── outputs.tf          # Environment outputs
+│     ├── providers.tf             # terraform provider configuration
+│     ├── terraform.tfvars.example   # Variable template (copy to terraform.tfvars)
+│     └── variables.tf          # All input variables
 └── functions/                  # Application code, deployed separately from infra
 │   ├── function_app.py         # generate_report + send_report_email
 │   ├── pdf_builder.py
 │   ├── requirements.txt
 │   ├── host.json
-│   ├── local.settings.json.example
+│   └── local.settings.json.example
 └──  modules/              # Modules
 │   ├── apim               # API Management, API definition, JWT policy
 │   ├── networking         # VNet, subnet, NSG, private endpoints
@@ -129,9 +132,9 @@ azure_report_portal/
 │   ├── storage            # Blob Storage account and reports container
 │   ├── database           # Azure SQL server and serverless database
 │   ├── functions          # App Service Plan, Function App, app settings
-│   ├── communication      # ACS resource and email domain
+│   └── communication      # ACS resource and email domain
 └── scripts/
-│   ├── seed.sql
+    └── seed.sql
 ```
 
 ---
@@ -342,3 +345,29 @@ auto populated information
 ## License
 
 MIT
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+No requirements.
+
+## Providers
+
+No providers.
+
+## Modules
+
+No modules.
+
+## Resources
+
+No resources.
+
+## Inputs
+
+No inputs.
+
+## Outputs
+
+No outputs.
+<!-- END_TF_DOCS -->
