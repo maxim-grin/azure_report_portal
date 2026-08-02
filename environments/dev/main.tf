@@ -30,11 +30,12 @@ resource "azurerm_private_dns_zone" "this" {
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "this" {
-  for_each            = azurerm_private_dns_zone.this
-  name                = "${local.prefix}-${each.key}-link"
-  private_dns_zone_id = each.value.id
-  virtual_network_id  = module.network.vnet_id
-  tags                = local.common_tags
+  resource_group_name   = azurerm_resource_group.main
+  for_each              = azurerm_private_dns_zone.this
+  name                  = "${local.prefix}-${each.key}-link"
+  private_dns_zone_name = each.value.name
+  virtual_network_id    = module.network.vnet_id
+  tags                  = local.common_tags
 }
 
 module "network" {

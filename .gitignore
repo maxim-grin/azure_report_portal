@@ -3,10 +3,12 @@
 *.tfstate.*
 .terraform/
 terraform.tfvars
+backend.hcl
 *.tfplan
 crash.log
 crash.*.log
 client/config.js
+modules/*/.terraform.lock.hcl
 
 # Azure Functions
 functions/local.settings.json

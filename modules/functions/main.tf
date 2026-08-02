@@ -33,7 +33,7 @@ resource "azurerm_storage_account" "function_runtime" {
   tags = var.tags
 }
 
-resource "azuerm_storage_account_queue_properties" "queue_properties" {
+resource "azurerm_storage_account_queue_properties" "queue_properties" {
   storage_account_id = azurerm_storage_account.function_runtime.id
   logging {
     delete                = true
