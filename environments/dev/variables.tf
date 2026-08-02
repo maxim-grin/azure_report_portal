@@ -32,3 +32,8 @@ variable "sql_admin_password" {
   type        = string
   sensitive   = true
 }
+
+variable "subscription_id" {
+  description = "Azure subscription ID — required by the azurerm provider from v4.0 onward"
+  type        = string
+}

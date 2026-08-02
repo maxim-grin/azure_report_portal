@@ -2,6 +2,7 @@
 # Copy to terraform.tfvars and fill real values.
 # terraform.tfvars must stay in .gitignore — never commit it.
 
+subscription_id = "00000000-0000-0000-0000-000000000000"
 location    = "westus2"
 project     = "reportportal"
 environment = "dev"
