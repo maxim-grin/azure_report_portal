@@ -1,6 +1,6 @@
 # Testing the functions
 
-Two functions: `generate_report` (builds PDF, uploads to blob, returns SAS URL) and `send_report_email` (sends that URL by email). Both sit behind APIM — JWT validated there, claims forwarded as headers.
+Two functions: `generate_report` (builds PDF, uploads to blob, returns SAS URL) and `send_report_email` (sends that URL by email). Both sit behind App Service Authentication (Easy Auth) — the platform validates the Entra ID token and injects the principal as `x-ms-client-principal-id` before function code runs.
 
 ---
 
@@ -15,7 +15,7 @@ Two functions: `generate_report` (builds PDF, uploads to blob, returns SAS URL) 
 
 ## 1. Local testing (before deploying)
 
-Catches bugs before they hit Azure. Bypasses APIM entirely — no JWT validation locally.
+Catches bugs before they hit Azure. Bypasses Easy Auth entirely, no JWT validation locally.
 
 ```bash
 cd functions
@@ -29,7 +29,7 @@ cp local.settings.json.example local.settings.json
 func start
 ```
 
-Since there's no APIM in front locally, `x-ms-client-principal-id` won't be set automatically. Fake it manually:
+Easy Auth only runs in Azure, so locally `x-ms-client-principal-id` won't be set. Fake it manually:
 
 ```bash
 curl -X POST http://localhost:7071/api/generate \
@@ -54,7 +54,7 @@ Open `download_url` in a browser — should download a PDF with the seeded expen
 
 ---
 
-## 2. Smoke test after deploy (direct Function URL, bypasses APIM)
+## 2. Smoke test after deploy (expect 401 without a token)
 
 Confirms the Function App itself works in Azure — managed identity, Key Vault access, SQL connection, blob upload. Still no JWT validation at this stage.
 
@@ -69,7 +69,7 @@ If this fails, check in order: Function App logs (Application Insights), managed
 
 ---
 
-## 3. Full flow test through APIM (real auth)
++## 3. Full flow test against the deployed Function App (real auth)
 
 This is the actual production path — JWT validated, claims forwarded, both functions chained.
 
@@ -86,7 +86,7 @@ Replace `<api-client-id>` with the value from `terraform output api_client_id`.
 **Generate the report**
 
 ```bash
-RESPONSE=$(curl -s -X POST https://reportportal-dev-apim.azure-api.net/reports/generate \
+RESPONSE=$(curl -s -X POST https://reportportal-dev-func.azurewebsites.net/api/reports/generate \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"report_id": "<uuid-from-seed-data>"}')
@@ -98,7 +98,7 @@ DOWNLOAD_URL=$(echo $RESPONSE | jq -r '.download_url')
 **Send the email**
 
 ```bash
-curl -X POST https://reportportal-dev-apim.azure-api.net/reports/send-report-email \
+curl -X POST https://reportportal-dev-func.azurewebsites.net/api/reports/send-report-email \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{\"download_url\": \"$DOWNLOAD_URL\", \"expires_in_hours\": 48}"
@@ -110,14 +110,14 @@ Check the inbox tied to your test account's `preferred_username` claim. If nothi
 
 ## Common failure points
 
-| Symptom | Likely cause |
-|---|---|
-| 401 on APIM call | Token audience doesn't match `api_client_id`, or token expired |
-| 404 on generate | `report_id` doesn't exist, or doesn't belong to the authenticated user — same response for both, by design |
-| 500 on generate | SQL connection failure — check managed identity has `SQL DB Contributor` role, check Key Vault secret name matches |
-| PDF downloads but is empty/broken | Check `reportlab` installed correctly — remote build sometimes misses system deps, check deployment logs |
-| Email never arrives | Check ACS delivery report in Portal; check `ACS_SENDER_ADDRESS` matches actual provisioned domain |
-| `x-ms-client-principal-id` empty in Function | APIM policy not forwarding claim — check `set-header` policy in `apim.tf` is applied (`terraform apply` again if recently added) |
+| Symptom                                      | Likely cause                                                                                                       |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 401 from the Function App                    | Token audience doesn't match `api_client_id`, or token expired                                                     |
+| 404 on generate                              | `report_id` doesn't exist, or doesn't belong to the authenticated user — same response for both, by design         |
+| 500 on generate                              | SQL connection failure — check managed identity has `SQL DB Contributor` role, check Key Vault secret name matches |
+| PDF downloads but is empty/broken            | Check `reportlab` installed correctly — remote build sometimes misses system deps, check deployment logs           |
+| Email never arrives                          | Check ACS delivery report in Portal; check `ACS_SENDER_ADDRESS` matches actual provisioned domain                  |
+| `x-ms-client-principal-id` empty in Function | Easy Auth not enabled or not applied — check `auth_settings_v2` in `modules/functions` and re-apply                |
 
 ---
 

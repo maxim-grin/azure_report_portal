@@ -11,7 +11,6 @@ flowchart LR
     User[User]
     Client[Client App / Client]
     Entra[Entra ID<br/>Auth / JWT Issuance]
-    APIM[API Management<br/>JWT Validation + Rate Limiting]
     Func[Azure Function<br/>Generate Report / Render PDF]
     SQL[(Azure SQL<br/>Serverless)]
     Blob[(Blob Storage<br/>PDF + SAS URL)]
@@ -21,8 +20,7 @@ flowchart LR
     User --> Client
     Client -->|1. Redirect to Login| Entra
     Entra -->|2. JWT| Client
-    Client -->|3. POST /reports/generate + JWT| APIM
-    APIM -->|4. Validated request| Func
+    Client -->|3. POST /reports/generate + JWT| Func
     Func -->|5. Fetch report data| SQL
     Func -->|6. Store PDF| Blob
     Blob -->|7. SAS URL| Func
@@ -98,7 +96,7 @@ flowchart LR
 | Layer                | Azure                                    | GCP                                | AWS                                             | OCI                                                                                                                                  |
 | -------------------- | ---------------------------------------- | ---------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Auth                 | Entra ID (app registration, JWT)         | Identity Platform (email/password) | Cognito User Pools                              | IAM Identity Domain (OAuth app, email/password)                                                                                      |
-| API layer            | API Management (Consumption tier)        | API Gateway + OpenAPI template     | API Gateway (HTTP API)                          | API Gateway — declarative JWT authentication policy + declarative CORS                                                               |
+| API layer            | None — Easy Auth on the Function App     | API Gateway + OpenAPI template     | API Gateway (HTTP API)                          | API Gateway — declarative JWT authentication policy + declarative CORS                                                               |
 | Compute              | Azure Functions (Consumption)            | Cloud Run                          | Lambda                                          | OCI Functions (Fn Project)                                                                                                           |
 | File storage         | Blob Storage                             | Cloud Storage (GCS)                | S3                                              | Object Storage — Pre-Authenticated Requests (PARs) for time-limited links                                                            |
 | Report data store    | Azure SQL (serverless, auto-pause)       | Firestore                          | DynamoDB (composite key: owner_uid + report_id) | Oracle NoSQL Database or Autonomous Database — undecided, see note below                                                             |
@@ -116,7 +114,7 @@ flowchart LR
 
 ## Architectural differences worth knowing
 
-**CORS handling.** Azure (APIM), AWS (API Gateway HTTP API), and OCI (API Gateway) all support CORS as a declarative policy — no application code involved. GCP's API Gateway (built on ESPv2) has no CORS support of its own; the Cloud Run application code has to implement `OPTIONS` handling and set `Access-Control-*` headers itself. This is the one place GCP's version needs meaningfully more application-layer code than the others.
+**CORS handling.** Azure (Function App `site_config.cors`), AWS (API Gateway HTTP API), and OCI (API Gateway) all configure CORS declaratively in Terraform — no application code involved. GCP's API Gateway (built on ESPv2) has no CORS support of its own; the Cloud Run application code has to implement `OPTIONS` handling and set `Access-Control-*` headers itself. This is the one place GCP's version needs meaningfully more application-layer code than the others.
 
 **Signing time-limited download URLs.** All three built clouds use the same 48-hour expiry pattern, but the mechanics differ:
 
@@ -154,7 +152,7 @@ All figures assume a personal learning deployment: spun up for a few hours at a 
 | Service role      | Azure                                       | GCP                                                                    | AWS                                        | OCI                                                                                                                             |
 | ----------------- | ------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | Compute           | Functions Consumption — ~$0                 | Cloud Run — ~$0 (free tier)                                            | Lambda — ~$0 (free tier)                   | OCI Functions — ~$0, but free tier is only 10,000 invocations/month (smaller than Lambda's 1M or Cloud Run's 2M)                |
-| API layer         | APIM Consumption — ~$0                      | API Gateway — ~$0 (free tier)                                          | API Gateway — ~$0                          | API Gateway — ~$0 at this scale                                                                                                 |
+| API layer         | None — Easy Auth is free                    | API Gateway — ~$0 (free tier)                                          | API Gateway — ~$0                          | API Gateway — ~$0 at this scale                                                                                                 |
 | File storage      | Blob Storage — ~$1/month                    | Cloud Storage — ~$0 (free tier, region-locked)                         | S3 — ~$0–1/month                           | Object Storage — ~$0 (200 GB free, forever — the most generous of the four)                                                     |
 | Report data store | Azure SQL serverless — ~$1–2/month          | Firestore — ~$0 (free tier)                                            | DynamoDB — ~$0 (free tier, permanent)      | NoSQL — ~$0 (permanent, most generous free tier of the four) or Autonomous Database — ~$0 (permanent, 2 instances free forever) |
 | Email             | Communication Services — ~$0 (100/day free) | Third-party (e.g. SendGrid) — ~$0 for a 60-day trial, then a real bill | SES — ~$0                                  | Email Delivery — likely ~$0 at this scale, exact free-tier limits not yet confirmed                                             |
@@ -209,7 +207,7 @@ sequenceDiagram
 | Generic label     | Azure                  | GCP               | AWS         | OCI                         |
 | ----------------- | ---------------------- | ----------------- | ----------- | --------------------------- |
 | Identity Provider | Entra ID               | Identity Platform | Cognito     | IAM Identity Domain         |
-| API Gateway       | API Management         | API Gateway       | API Gateway | API Gateway                 |
+| API Gateway       | None (Easy Auth)       | API Gateway       | API Gateway | API Gateway                 |
 | Compute           | Functions              | Cloud Run         | Lambda      | OCI Functions               |
 | Data Store        | Azure SQL              | Firestore         | DynamoDB    | NoSQL / Autonomous Database |
 | Object Storage    | Blob Storage           | Cloud Storage     | S3          | Object Storage              |
@@ -251,14 +249,14 @@ Payroll traffic isn't smooth. It's near-zero for thirteen days, then tens of tho
 
 ### Production changes and costs, by cloud
 
-|           | Main production changes                                                                                                                                               | Rough monthly at ~150k reports |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| **Azure** | APIM Consumption → Basic v2 (Consumption carries no SLA under 1M calls); Functions Consumption → Premium for warm instances and VNet; actively re-decide the SQL tier | **~$350–600**                  |
-| **GCP**   | Cloud Run minimum instances to kill cold starts; the third-party email vendor becomes a real, non-trivial bill                                                        | **~$130–200**                  |
-| **AWS**   | Provisioned concurrency for burst absorption; leave the SES sandbox                                                                                                   | **~$50–100**                   |
-| **OCI**   | Exceeds the 10,000/month Functions free tier; verify the unverified pieces before anything else                                                                       | **~$30–70**                    |
+|           | Main production changes                                                                                                                         | Rough monthly at ~150k reports |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| **Azure** | Functions Consumption → Premium for warm instances and VNet; actively re-decide the SQL tier; optionally add Front Door + WAF for rate limiting | **~$150–400**                  |
+| **GCP**   | Cloud Run minimum instances to kill cold starts; the third-party email vendor becomes a real, non-trivial bill                                  | **~$130–200**                  |
+| **AWS**   | Provisioned concurrency for burst absorption; leave the SES sandbox                                                                             | **~$50–100**                   |
+| **OCI**   | Exceeds the 10,000/month Functions free tier; verify the unverified pieces before anything else                                                 | **~$30–70**                    |
 
-**Azure is the expensive one, by a wide margin**, for three compounding reasons. APIM Consumption has no SLA below 1M calls, so production realistically means Basic v2 at roughly $210/month — the single largest line item, buying almost nothing at 150k calls except the SLA and VNet support. Functions Consumption → Premium adds another ~$150–250. And the subtle one: **Azure SQL serverless stops being the cheap option once traffic is steady.** Auto-pause was the entire reason it was attractive, and it will essentially never trigger now; continuous serverless billing runs well above equivalent provisioned compute. Add ~$30/month of private endpoints the other three designs don't have at all.
+**Azure is the most expensive**. Functions Consumption → Premium adds ~$150–250 for warm instances and VNet. And the subtle one: **Azure SQL serverless stops being the cheap option once traffic is steady.** Auto-pause was the entire reason it was attractive, and it will essentially never trigger now; continuous serverless billing runs well above equivalent provisioned compute. Add ~$30/month of private endpoints the other three designs don't have at all.
 
 **GCP's production cost is dominated by the one component that isn't Google's.** Everything native stays cheap — Firestore at this volume is a couple of dollars, API Gateway is still inside its free tier. But a third-party email provider at 150k/month runs around $90/month, more than the entire rest of the GCP stack combined.
 

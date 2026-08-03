@@ -11,3 +11,4 @@ admin_email = "you@example.com"
 
 sql_admin_login    = "sqladminuser"
 sql_admin_password = "ChangeThisToSomethingStrong123!"
+client_origin = "http://localhost:5500"

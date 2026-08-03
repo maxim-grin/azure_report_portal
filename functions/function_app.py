@@ -3,7 +3,7 @@ HTTP-triggered function: POST /generate
 Body: { "report_id": "<uuid>" }
 
 Flow:
-1. Extract user_id from validated JWT claims (APIM already verified the token).
+1. Extract user_id from validated JWT claims (Easy Auth already verified the token).
 2. Fetch report header + line items from SQL, scoped to that user_id.
 3. Build PDF via pdf_builder.
 4. Upload PDF to Blob Storage under a non-guessable path.
@@ -118,9 +118,11 @@ def _upload_pdf(pdf_bytes: bytes, user_id: str, report_id: str) -> str:
 @app.route(route="generate", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def generate_report(req: func.HttpRequest) -> func.HttpResponse:
     """
-    Auth note: auth_level is ANONYMOUS here because APIM already validated
-    the JWT upstream (see apim.tf jwt_validation policy). The function trusts
-    the x-ms-client-principal-id header APIM forwards, NOT a body parameter —
+    Auth note: auth_level is ANONYMOUS here because App Service Authentication
+    (Easy Auth) validates the Entra ID token at the platform layer before any
+    request reaches this code — see auth_settings_v2 in modules/functions.
+    The function trusts the x-ms-client-principal-id header the platform sets
+    (and overwrites if a caller supplies it), NOT a body parameter —
     this is what prevents one user requesting another user's report.
     """
     user_id = req.headers.get("x-ms-client-principal-id")

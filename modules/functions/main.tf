@@ -1,5 +1,3 @@
-# functions.tf
-
 resource "azurerm_service_plan" "main" {
   #checkov:skip=CKV_AZURE_225:Classic Consumption (Y1) plans don't support availability zones at all — requires Elastic Premium or Dedicated. Accepted for a Consumption-tier learning deployment. See README security section.
   #checkov:skip=CKV_AZURE_212:Consumption plans autoscale per-execution with no fixed worker_count concept; minimum-instance guarantees require Premium (min. 3 always-ready instances). Accepted for a Consumption-tier learning deployment. See README security section.
@@ -69,7 +67,7 @@ resource "azurerm_private_endpoint" "function_runtime" {
 }
 
 resource "azurerm_linux_function_app" "main" {
-  #checkov:skip=CKV_AZURE_221:Disabling public access would break APIM's ability to reach the Function backend, since APIM stays on Consumption tier with no VNet integration. Accepted for a Consumption-tier deployment. See README security section.
+  #checkov:skip=CKV_AZURE_221:The browser-based client calls this Function App directly, so it must remain publicly reachable. Access is gated by App Service Authentication (Easy Auth) validating Entra ID tokens at the platform layer before any request reaches function code. See README security section.
 
   name                = "${var.prefix}-func"
   location            = var.location
@@ -91,6 +89,31 @@ resource "azurerm_linux_function_app" "main" {
   site_config {
     application_stack {
       python_version = "3.11"
+    }
+
+    # The browser client calls this Function App directly
+    cors {
+      allowed_origins = [var.client_origin]
+    }
+  }
+
+  # Platform-level JWT validation. Entra ID tokens are verified before any
+  # request reaches function code, and the validated principal is injected
+  # as X-MS-CLIENT-PRINCIPAL-ID — which function_app.py already reads.
+  # Client-supplied copies of that header are overwritten by the platform.
+  auth_settings_v2 {
+    auth_enabled           = true
+    require_authentication = true
+    unauthenticated_action = "Return401"
+
+    active_directory_v2 {
+      client_id            = var.azure_function_client_id
+      tenant_auth_endpoint = "https://login.microsoftonline.com/${var.tenant_id}/v2.0"
+      allowed_audiences    = ["api://${var.azure_function_client_id}"]
+    }
+
+    login {
+      token_store_enabled = false # stateless API; no session cookies needed
     }
   }
 

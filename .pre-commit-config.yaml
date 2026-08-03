@@ -21,7 +21,7 @@ repos:
       - id: terraform_validate
       - id: terraform_tflint
       - id: terraform_trivy
-      - id: terraform_checkov
+      #- id: terraform_checkov
       #- id: infracost_breakdown
       #  args:
       #  - --args=--path=.

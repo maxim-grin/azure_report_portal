@@ -52,7 +52,7 @@ def _build_email_content(download_url: str, expires_in_hours: int) -> dict:
 @app.route(route="send-report-email", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def send_report_email(req: func.HttpRequest) -> func.HttpResponse:
     """
-    Same trust model as generate_report — APIM validates JWT upstream,
+    Same trust model as generate_report — Easy Auth validates the JWT at the platform layer,
     forwards authenticated user context. recipient_email comes from the
     forwarded claim, never from the request body, so a caller can't
     redirect someone else's report to their own inbox.

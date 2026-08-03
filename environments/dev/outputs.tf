@@ -13,3 +13,8 @@ output "tenant_id" {
 output "api_client_id" {
   value = module.identity.application_client_id
 }
+
+output "function_base_url" {
+  description = "API base URL for client/config.js"
+  value       = "https://${module.functions.default_hostname}/api"
+}

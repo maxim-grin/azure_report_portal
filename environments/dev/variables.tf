@@ -37,3 +37,9 @@ variable "subscription_id" {
   description = "Azure subscription ID — required by the azurerm provider from v4.0 onward"
   type        = string
 }
+
+variable "client_origin" {
+  description = "Origin the client/ test harness is served from — used for Function App CORS"
+  type        = string
+  default     = "http://localhost:5500"
+}

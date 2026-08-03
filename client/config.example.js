@@ -17,6 +17,7 @@ window.CLIENT_CONFIG = {
   // api://<api-app-registration-client-id>/reports.access
   apiScope: "api://<your-api-app-registration-client-id>/reports.access",
 
-  // Your APIM gateway base URL, e.g. https://reportportal-dev-apim.azure-api.net
-  apimBaseUrl: "https://<your-apim-instance>.azure-api.net",
+  // Function App API base URL — the `function_base_url` Terraform output,
+  // e.g. https://reportportal-dev-func.azurewebsites.net/api
+  functionBaseUrl: "https://<your-function-app>.azurewebsites.net/api",
 };

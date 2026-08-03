@@ -86,7 +86,7 @@ async function acquireToken() {
 async function callApi(path, body) {
   const token = await acquireToken();
   log(`POST ${path} ${JSON.stringify(body)}`);
-  const res = await fetch(`${cfg.apimBaseUrl}${path}`, {
+  const res = await fetch(`${cfg.functionBaseUrl}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

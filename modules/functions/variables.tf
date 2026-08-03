@@ -63,3 +63,13 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "tenant_id" {
+  description = "Entra ID tenant ID, used by Easy Auth to build the token issuer endpoint"
+  type        = string
+}
+
+variable "client_origin" {
+  description = "Origin the browser client is served from, allowed via CORS"
+  type        = string
+}

@@ -30,8 +30,8 @@ resource "azurerm_private_dns_zone" "this" {
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "this" {
-  resource_group_name   = azurerm_resource_group.main
   for_each              = azurerm_private_dns_zone.this
+  resource_group_name   = azurerm_resource_group.main.name
   name                  = "${local.prefix}-${each.key}-link"
   private_dns_zone_name = each.value.name
   virtual_network_id    = module.network.vnet_id
@@ -162,20 +162,6 @@ module "identity" {
   tags                = local.common_tags
 }
 
-module "apim" {
-  source = "../../modules/apim"
-
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  tenant_id           = data.azurerm_client_config.current.tenant_id
-  client_id           = module.identity.application_client_id
-  prefix              = local.prefix
-  project             = var.project
-  admin_email         = var.admin_email
-
-  tags = local.common_tags
-}
-
 module "functions" {
   source = "../../modules/functions"
 
@@ -190,6 +176,8 @@ module "functions" {
   azure_function_client_id     = module.identity.azure_function_client_id
   reports_storage_account_name = module.storage.storage_account_name
   acs_from_sender_domain       = module.communication.from_sender_domain
+  tenant_id                    = data.azurerm_client_config.current.tenant_id
+  client_origin                = var.client_origin
 
   depends_on = [
     azurerm_role_assignment.function_kv_reader,

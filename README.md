@@ -14,8 +14,7 @@ flowchart LR
     User[User]
     Client[Client App / Client]
     Entra[Entra ID<br/>Auth / JWT Issuance]
-    APIM[API Management<br/>JWT Validation + Rate Limiting]
-    Func[Azure Function<br/>Generate Report / Render PDF]
+    Func[Azure Function<br/>Easy Auth validates JWT<br/>Generate Report / Render PDF]
     SQL[(Azure SQL<br/>Serverless)]
     Blob[(Blob Storage<br/>PDF + SAS URL)]
     ACS[Azure Communication Services<br/>Email Delivery]
@@ -24,12 +23,11 @@ flowchart LR
     User --> Client
     Client -->|1. Redirect to Login| Entra
     Entra -->|2. JWT| Client
-    Client -->|3. POST /reports/generate + JWT| APIM
-    APIM -->|4. Validated request| Func
-    Func -->|5. Fetch report data| SQL
-    Func -->|6. Store PDF| Blob
-    Blob -->|7. SAS URL| Func
-    Func -->|8. Send email w/ link| ACS
+    Client -->|3. POST /reports/generate + JWT| Func
+    Func -->|4. Fetch report data| SQL
+    Func -->|5. Store PDF| Blob
+    Blob -->|6. SAS URL| Func
+    Func -->|7. Send email w/ link| ACS
     Func -.->|Managed Identity| KV
     Blob -.->|Managed Identity| KV
     SQL -.->|Managed Identity| KV
@@ -44,7 +42,6 @@ sequenceDiagram
     actor U as User
     participant Cl as Client App
     participant E as Entra ID
-    participant A as API Management
     participant F as Azure Function
     participant S as Azure SQL
     participant B as Blob Storage
@@ -58,9 +55,8 @@ sequenceDiagram
     E-->>Cl: JWT token
 
     U->>Cl: Enter report_id, click Generate
-    Cl->>A: POST /reports/generate (JWT)
-    A->>A: Validate JWT + rate limit
-    A->>F: Forward validated request
+    Cl->>F: POST /reports/generate (JWT)
+    F->>F: Easy Auth validates JWT
 
     F->>S: Query report source data
     S-->>F: Report data
@@ -69,13 +65,11 @@ sequenceDiagram
     F->>B: Upload PDF
     B-->>F: SAS URL (48h expiry)
 
-    F-->>A: download_url
-    A-->>Cl: download_url
+    F-->>Cl: download_url
     Cl-->>U: Show download link
 
     U->>Cl: Click "send email"
-    Cl->>A: POST /reports/send-report-email (download_url)
-    A->>F: Forward request
+    Cl->>F: POST /reports/send-report-email (download_url)
     F->>C: Send email with link
     C-->>U: Email delivered
 ```
@@ -86,16 +80,16 @@ All secrets are stored in Key Vault. All service-to-service access uses managed 
 
 ## Azure services used
 
-| Service                      | Purpose                                          |
-| ---------------------------- | ------------------------------------------------ |
-| Entra ID (app registration)  | User authentication, JWT issuance                |
-| API Management               | JWT validation, rate limiting, stable API facade |
-| Azure Functions              | Report generation, PDF rendering, email dispatch |
-| Azure Blob Storage           | Generated PDF storage with SAS URL access        |
-| Azure SQL (serverless)       | Relational data store for report source data     |
-| Azure Communication Services | Transactional email delivery                     |
-| Azure Key Vault              | Secrets, connection strings, managed access      |
-| VNet + NSG                   | Network isolation                                |
+| Service                      | Purpose                                            |
+| ---------------------------- | -------------------------------------------------- |
+| Entra ID (app registration)  | User authentication, JWT issuance                  |
+| Azure Functions              | Report generation, PDF rendering, email dispatch   |
+| App Service Authentication   | Platform-level Entra ID JWT validation (Easy Auth) |
+| Azure Blob Storage           | Generated PDF storage with SAS URL access          |
+| Azure SQL (serverless)       | Relational data store for report source data       |
+| Azure Communication Services | Transactional email delivery                       |
+| Azure Key Vault              | Secrets, connection strings, managed access        |
+| VNet + NSG                   | Network isolation                                  |
 
 ---
 
@@ -125,7 +119,6 @@ azure_report_portal/
 │   ├── host.json
 │   └── local.settings.json.example
 └──  modules/              # Modules
-│   ├── apim               # API Management, API definition, JWT policy
 │   ├── networking         # VNet, subnet, NSG, private endpoints
 │   ├── identity           # Entra ID app registration, managed identities, workload identity federation
 │   ├── keyvault           # Key Vault, RBAC-based access, secrets
@@ -214,8 +207,6 @@ terraform plan
 terraform apply
 ```
 
-> Note: API Management takes 30–45 minutes to provision even on the Consumption tier. This is expected — grab a coffee.
-
 ---
 
 ## Seeding sample data
@@ -241,7 +232,7 @@ See `functions/TESTING.md` for local testing, smoke tests, and full auth-flow ve
 
 ## Testing the flow
 
-1. Sign in through client/ (see client/README.md for one-time Entra ID + APIM setup), or get a JWT via the Functions emulator's dev auth
+1. Sign in through client/ (see client/README.md for one-time Entra ID setup), or get a JWT via the Functions emulator's dev auth
 2. Click "generate" (or POST /reports/generate directly) with a report_id from seed data
 3. Returns a download_url — fetch it, confirm PDF renders correctly
 4. POST /reports/send-report-email with the same download_url
@@ -267,21 +258,22 @@ See `functions/TESTING.md` for local testing, smoke tests, and full auth-flow ve
 
 ## Security decisions worth noting
 
-- JWT validation happens at APIM — Functions receive only pre-validated requests
+- JWT validation happens at the platform layer via App Service Authentication (Easy Auth) — function code receives only pre-validated requests, and the identity header cannot be spoofed by a caller
 - User identity is extracted from token claims, never from request parameters
 - Blob paths include a UUID component to prevent enumeration
 - SAS URLs expire after 48 hours
 - Key Vault and SQL sit behind private endpoints, not public access with IP rules
 - Key Vault access uses managed identities, not access keys or shared secrets
-- NSG rules restrict inbound traffic to APIM only
-- **APIM is intentionally not deployed inside a virtual network, and public
-  network access is not disabled.** Consumption tier supports neither
-  `virtual_network_type` (VNet integration) nor private endpoints / disabling
-  public access — those require Developer, Basic, Standard, or Premium tier.
-  This is a hard platform ceiling, not a config gap: there's no Terraform
-  setting that closes it while staying on Consumption.
-  Moving to Developer tier (~$50/month) or Premium (~$2,700+/month) would
-  close both findings. See the Cost estimate section below.
+- NSG rules allow only the Function subnet to reach the private endpoints subnet
+- **The Function App is publicly reachable, deliberately.** The browser
+  client calls it directly, so `public_network_access_enabled` stays true
+  (`CKV_AZURE_221` is suppressed with that rationale). The access boundary
+  is identity, not network: App Service Authentication validates every
+  request's Entra ID token at the platform layer, and overwrites any
+  client-supplied `X-MS-CLIENT-PRINCIPAL-*` header, so the identity the
+  function reads cannot be forged.
+- **There is no API gateway, and therefore no gateway-level rate limiting.**
+  The tradeoff is that per-user throttling belongs in application code, or in Azure Front Door + WAF if edge protection is wanted later
 - **Minimum TLS 1.2 is enforced on Azure SQL** (`minimum_tls_version = "1.2"`)
   — this matches Azure's own default, made explicit for scanning tools that
   can't see runtime defaults.
@@ -305,18 +297,16 @@ See `functions/TESTING.md` for local testing, smoke tests, and full auth-flow ve
 
 For a personal learning deployment, spun up for a few hours at a time and destroyed when not in use:
 
-| Service                            | Billing model                     | Realistic cost   |
-| ---------------------------------- | --------------------------------- | ---------------- |
-| Azure Functions (Consumption)      | Per execution                     | ~$0 (free tier)  |
-| Azure SQL (Serverless, auto-pause) | Per vCore-second when active      | ~$1–2/month      |
-| API Management (Consumption tier)  | Per million calls (1M free/month) | ~$0              |
-| Blob Storage                       | Per GB + transactions             | ~$1/month        |
-| Azure Communication Services       | Per email (100/day free)          | ~$0              |
-| Key Vault                          | Per 10,000 operations             | ~$1/month        |
-| Private endpoints                  | Per hour, per endpoint            | ~$0.01/hour each |
+| Service                            | Billing model                | Realistic cost   |
+| ---------------------------------- | ---------------------------- | ---------------- |
+| Azure Functions (Consumption)      | Per execution                | ~$0 (free tier)  |
+| Azure SQL (Serverless, auto-pause) | Per vCore-second when active | ~$1–2/month      |
+| Blob Storage                       | Per GB + transactions        | ~$1/month        |
+| Azure Communication Services       | Per email (100/day free)     | ~$0              |
+| Key Vault                          | Per 10,000 operations        | ~$1/month        |
+| Private endpoints                  | Per hour, per endpoint       | ~$0.01/hour each |
 
-All Azure billing here is fractional/hourly or per-call, not a flat monthly charge. Running this for a weekend costs cents, not dollars. Always `terraform destroy` when you're done with a session — private endpoints and SQL serverless compute are the main per-hour costs if left running.
-**Note:** these figures assume APIM stays on the Consumption tier. Moving to Developer or Premium — e.g. to satisfy VNet-integration requirements replaces the ~$0 APIM line with a flat ~$50/month (Developer) or ~$2,700+/month (Premium) cost, independent of usage.
+All Azure billing here is fractional/hourly or per-call, not a flat monthly charge. Running this for a weekend costs cents, not dollars. Always `terraform destroy` when you're done with a session — private endpoints and SQL serverless compute are the main per-hour costs if left running. +**Note:** there is no fixed monthly floor here, every line above is metered usage. See PRODUCTION.md for what changes at production volume.
 
 ---
 
@@ -324,7 +314,7 @@ All Azure billing here is fractional/hourly or per-call, not a flat monthly char
 
 - CI/CD pipeline for the Terraform itself
 - Custom email domain DNS verification (documented in ACS setup, completed manually)
-- Production hardening beyond what's described here (WAF rules tuning on APIM/Front Door, DDoS Standard protection, multi-region failover)
+- Production hardening beyond what's described here (WAF rules tuning on Front Door, DDoS Standard protection, multi-region failover)
 
 ---
 
